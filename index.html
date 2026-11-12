@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ប្រព័ន្ធគណនា និងវិក្កយបត្រពន្ធគយ (Khmer Customs Tax System)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <style> 
+    body { font-family: 'Kantumruy Pro', sans-serif; } 
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col items-center">
+
+  <!-- ================= AUTH MODAL (SIGN IN / SIGN UP) - បាំងជិត Background ================= -->
+  <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 space-y-6">
+      
+      <div class="text-center space-y-1">
+        <div class="text-4xl">🔐</div>
+        <h2 id="authTitle" class="text-xl font-bold text-blue-950">ចូលគណនី (Sign In)</h2>
+        <p class="text-xs text-slate-500">សូម Sign In ដើម្បីប្រើប្រាស់ប្រព័ន្ធគណនាពន្ធគយ</p>
+      </div>
+
+      <div id="authError" class="hidden p-3 bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl text-center"></div>
+
+      <form id="authForm" class="space-y-4">
+        <!-- Username Field (លាក់ពេល Sign In, បង្ហាញពេល Sign Up) -->
+        <div id="usernameFieldBox" class="hidden">
+          <label class="block text-xs font-bold text-slate-700 mb-1">ឈ្មោះអ្នកប្រើប្រាស់ (Username)</label>
+          <input type="text" id="authUsername" placeholder="ឧ. Username" 
+                 class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
+          <input type="email" id="authEmail" placeholder="example@gmail.com" required 
+                 class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        
+        <!-- Password Field with Toggle Eye Icon -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+          <div class="relative">
+            <input type="password" id="authPass" placeholder="••••••••" required 
+                   class="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
+            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-800 focus:outline-none">
+              <span id="eyeIcon" class="text-base">👁️‍🗨️</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+          Sign In
+        </button>
+      </form>
+
+      <div class="text-center text-xs text-slate-600 pt-2 border-t">
+        <span id="toggleText">មិនទាន់មានគណនីមែនទេ?</span>
+        <button type="button" id="toggleAuthMode" class="text-blue-600 font-bold hover:underline ml-1">បង្កើតគណនី (Sign Up)</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= MAIN WEB APP CONTAINER ================= -->
+  <div class="max-w-7xl w-full mx-auto space-y-6">
+    
+    <!-- Top Navigation Header -->
+    <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-blue-950 flex items-center gap-2">
+          <span>📦</span> ប្រព័ន្ធគណនា និងវិក្កយបត្រពន្ធគយច្រើនមុខទំនិញ
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">Khmer Customs Multi-Item Valuation & Tax Invoice Declaration</p>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Exchange Rate Input with Stepper (+ / -) -->
+        <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl shadow-xs">
+          <label class="text-xs font-bold text-amber-900">Ex. Rate :</label>
+          <div class="flex items-center bg-white border border-amber-300 rounded-lg overflow-hidden">
+            <button type="button" onclick="adjustExchangeRate(-1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">-</button>
+            <input type="number" id="exchangeRate" value="4083" min="1000" max="9999" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" class="w-16 px-1 py-1 text-sm font-bold text-center outline-none">
+            <button type="button" onclick="adjustExchangeRate(1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">+</button>
+          </div>
+          <span class="text-xs font-semibold text-amber-800">៛</span>
+        </div>
+
+        <!-- User Profile & Logout -->
+        <div id="userProfileBox" class="hidden flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+          <span class="font-bold text-slate-700" id="userEmailDisplay">user@gmail.com</span>
+          <button onclick="userLogout()" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg font-bold transition">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Notification Toast -->
+    <div id="toastMessage" class="hidden p-4 rounded-xl text-sm font-semibold text-center transition-all shadow-sm"></div>
+
+    <!-- MAIN FORM & CUSTOMS LIVE BREAKDOWN CARD -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 space-y-6">
+      
+      <form id="addItemForm" class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200 space-y-4">
+        <input type="hidden" id="editItemIndex" value="-1">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+          
+          <div class="md:col-span-2 relative">
+            <label class="block text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1">
+              <span>✨</span> ស្វែងរក និងជ្រើសរើសមុខទំនិញ *
+            </label>
+            <input type="text" id="itemSearchInput" placeholder="🔍 វាយឈ្មោះទំនិញ ឬ HS Code..." autocomplete="off" required 
+                   class="w-full px-3.5 py-2.5 bg-gradient-to-r from-indigo-50 via-blue-50 to-sky-50 border-2 border-indigo-300 rounded-xl text-sm font-bold text-indigo-950 placeholder-indigo-400 shadow-xs outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            <input type="hidden" id="selectedMasterIndex" value="">
+            <div id="itemDropdownList" class="hidden absolute z-50 left-0 right-0 mt-1.5 max-h-64 overflow-y-auto bg-white border-2 border-indigo-200 rounded-xl shadow-2xl divide-y divide-indigo-50"></div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ចំនួន និងប្រភេទ (Qty & Unit)</label>
+            <div class="flex gap-1.5">
+              <input type="number" step="1" min="1" id="itemQty" placeholder="ឧ. 10" 
+                     oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                     class="w-3/5 px-2.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
+              <input type="text" id="itemUnit" value="CTN" placeholder="CTN" 
+                     class="w-2/5 px-2 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-center font-semibold outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-blue-900 mb-1">ប្រាក់ពន្ធសរុប (Tax KHR)</label>
+            <input type="number" step="1" min="1" id="itemTaxKh" placeholder="ឧ. 150,000 ៛" 
+                   class="w-full px-3.5 py-2.5 bg-yellow-50 border border-blue-300 rounded-xl text-sm font-bold text-blue-950 outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
+          </div>
+
+          <div class="md:col-span-2 flex items-end gap-2">
+            <button type="submit" id="submitBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-sm w-full">
+              + បន្ថែមចូលតារាង
+            </button>
+            <button type="button" id="cancelBtn" onclick="resetForm()" class="hidden bg-slate-400 hover:bg-slate-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm">
+              បោះបង់
+            </button>
+          </div>
+
+        </div>
+      </form>
+
+      <!-- Live Customs Breakdown Receipt Card -->
+      <div id="customsReceiptCard" class="hidden border border-emerald-600 rounded-xl overflow-hidden bg-amber-50/20 shadow-xs">
+        <div class="bg-emerald-800 text-white px-4 py-2 text-xs font-bold flex justify-between items-center">
+          <span>បរិយាយមុខទំនិញ និងការគណនាប្រាក់ពន្ធ (Goods Description & Tax Calculation)</span>
+          <span id="cardHsCodeDisplay" class="bg-emerald-900 px-2.5 py-0.5 rounded text-[11px] font-mono">HS: ----</span>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+          <div class="space-y-1.5 border-b lg:border-b-0 lg:border-r border-slate-200 pb-3 lg:pb-0 lg:pr-4">
+            <div class="flex justify-between"><span class="text-slate-600">មុខទំនិញជា ខ្មែរ:</span> <b id="cardKhName" class="text-indigo-900 font-bold">--</b></div>
+            <div class="flex justify-between"><span class="text-slate-600">Commercial Description:</span> <b id="cardEnName" class="text-slate-800 font-mono">--</b></div>
+            <div class="flex justify-between"><span class="text-slate-600">ទម្ងន់សុទ្ធ Net Weight:</span> <b id="cardNet" class="text-emerald-700">0.00 KG</b></div>
+            <div class="flex justify-between"><span class="text-slate-600">ទម្ងន់សរុប Gross Weight:</span> <b id="cardGross" class="text-amber-700">0.00 KG</b></div>
+            <div class="flex justify-between"><span class="text-slate-600">តម្លៃទំនិញសរុប (Item Price):</span> <b id="cardTotalUsd" class="text-purple-700 font-bold">$0.00</b></div>
+          </div>
+
+          <div class="space-y-1.5">
+            <div class="flex justify-between"><span class="text-slate-600">បូកបន្ថែមលើតម្លៃគិតពន្ធគយ (Added Value 20%):</span> <b id="cardPlus20Usd" class="text-slate-800">$0.00</b></div>
+            
+            <div id="plus20KhrBox" class="flex justify-between items-center p-1.5 rounded-lg transition-all">
+              <span class="text-slate-600 font-semibold">តម្លៃបូក 20% (Plus 20% ៛):</span> 
+              <div class="text-right">
+                <b id="cardCustomsKhr" class="text-blue-800 font-bold">0 KHR</b>
+                <div id="limitWarningBadge" class="hidden mt-0.5 text-[11px] font-bold text-rose-600 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-md animate-pulse">
+                  ⚠️ បានលើសចំនួនកំណត់ (លើស 1,200,000 ៛)
+                </div>
+              </div>
+            </div>
+            
+            <div class="mt-2 pt-2 border-t border-slate-200 space-y-1">
+              <div class="flex justify-between text-[11px]"><span>COP (<span id="cardCopRate">15</span>%):</span> <span id="cardCopAmount">0 KHR</span></div>
+              <div class="flex justify-between text-[11px]"><span>SOP (<span id="cardSopRate">0</span>%):</span> <span id="cardSopAmount">0 KHR</span></div>
+              <div class="flex justify-between text-[11px]"><span>VOP (<span id="cardVopRate">10</span>%):</span> <span id="cardVopAmount">0 KHR</span></div>
+              <div class="flex justify-between font-bold text-rose-600 pt-1 border-t"><span>ប្រាក់ពន្ធសរុប (Total Tax):</span> <span id="cardTotalTax">0 KHR</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- MULTI-ITEM DECLARATION TABLE -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 space-y-4">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span>📋</span> តារាងមុខទំនិញគិតប្រាក់ពន្ធសរុប (Multi-Item Declaration List)
+        </h2>
+
+        <div class="flex items-center gap-2">
+          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+            📥 Export Excel
+          </button>
+          <button onclick="exportToPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+            📄 Export PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-xs text-center border-collapse">
+          <thead class="bg-slate-200/80 text-slate-800 font-bold border-b">
+            <tr>
+              <th class="p-3 border-r">ល.រ</th>
+              <th class="p-3 border-r min-w-[150px]">មុខទំនិញជា ខ្មែរ</th>
+              <th class="p-3 border-r min-w-[150px]">មុខទំនិញជា អង់គ្លេស</th>
+              <th class="p-3 border-r text-blue-900 min-w-[80px]">ចំនួន</th>
+              <th class="p-3 border-r min-w-[100px]">តម្លៃមួយឯកតា</th>
+              <th class="p-3 border-r text-purple-900 min-w-[100px]">Total ($)</th>
+              <th class="p-3 border-r text-emerald-900 min-w-[90px]">Net</th>
+              <th class="p-3 border-r text-amber-900 min-w-[90px]">Gross</th>
+              <th class="p-3 border-r font-mono min-w-[100px]">HS.Code</th>
+              <th class="p-3 border-r bg-slate-100 min-w-[145px]">តម្លៃបូក 20% (៛)</th>
+              <th class="p-3 border-r bg-blue-50 text-blue-900 min-w-[120px]">ប្រាក់ពន្ធ (៛)</th>
+              <th class="p-3 border-r bg-amber-100 text-blue-950 min-w-[170px]">ប្រាក់ពន្ធសរុប (រួម CDL 8,000៛)</th>
+              <th class="p-3 min-w-[110px]">សកម្មភាព</th>
+            </tr>
+          </thead>
+          <tbody id="multiItemTableBody" class="divide-y divide-slate-200"></tbody>
+          <tfoot id="multiItemTableFoot" class="bg-blue-50/80 font-bold border-t"></tfoot>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+
+  <!-- ================= JAVASCRIPT AUTH & CLOUD SYNC ================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDhklIxVwFMTdR-N8MpRQ2_ak0efEHNdXk",
+      authDomain: "tax-value.firebaseapp.com",
+      projectId: "tax-value",
+      storageBucket: "tax-value.firebasestorage.app",
+      messagingSenderId: "1039410575503",
+      appId: "1:1039410575503:web:847adb8b120553a1c618fa"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const authModal = document.getElementById('authModal');
+    const userProfileBox = document.getElementById('userProfileBox');
+    const userEmailDisplay = document.getElementById('userEmailDisplay');
+
+    let isSignUpMode = false;
+    const authTitle = document.getElementById('authTitle');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const toggleText = document.getElementById('toggleText');
+    const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
+    const authError = document.getElementById('authError');
+    const usernameFieldBox = document.getElementById('usernameFieldBox');
+    const authUsernameInput = document.getElementById('authUsername');
+
+    // មុខងារបើក/បិទបង្ហាញ Password
+    window.togglePasswordVisibility = function() {
+      const passInput = document.getElementById('authPass');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        eyeIcon.textContent = '👁️';
+      } else {
+        passInput.type = 'password';
+        eyeIcon.textContent = '👁️‍🗨️';
+      }
+    };
+
+    function isValidEmail(email) {
+      const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      return regex.test(email);
+    }
+
+    toggleAuthModeBtn.addEventListener('click', () => {
+      isSignUpMode = !isSignUpMode;
+      if (isSignUpMode) {
+        authTitle.textContent = "បង្កើតគណនីថ្មី (Sign Up)";
+        authSubmitBtn.textContent = "Sign Up";
+        toggleText.textContent = "មានគណនីរួចហើយមែនទេ?";
+        toggleAuthModeBtn.textContent = "ចូលគណនី (Sign In)";
+        usernameFieldBox.classList.remove('hidden');
+        authUsernameInput.required = true;
+      } else {
+        authTitle.textContent = "ចូលគណនី (Sign In)";
+        authSubmitBtn.textContent = "Sign In";
+        toggleText.textContent = "មិនទាន់មានគណនីមែនទេ?";
+        toggleAuthModeBtn.textContent = "បង្កើតគណនី (Sign Up)";
+        usernameFieldBox.classList.add('hidden');
+        authUsernameInput.required = false;
+      }
+      authError.classList.add('hidden');
+    });
+
+    // ពិនិត្យសិទ្ធិពេល Login (លុបការឆែក Verify Email ចោល)
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists() && userDoc.data().role === "admin") {
+          alert("⚠️ គណនី Admin មិនអាចប្រើប្រាស់ទំព័រ User នេះបានទេ! កំពុងបញ្ជូនទៅកាន់ Admin Panel...");
+          window.location.href = "Admin.html";
+          return;
+        }
+
+        authModal.classList.add('hidden');
+        userProfileBox.classList.remove('hidden');
+        userEmailDisplay.textContent = user.email;
+      } else {
+        authModal.classList.remove('hidden');
+        userProfileBox.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('authForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value.trim();
+      const pass = document.getElementById('authPass').value.trim();
+      const username = authUsernameInput.value.trim();
+
+      if (!isValidEmail(email)) {
+        authError.textContent = "❌ ទម្រង់ Email មិនត្រឹមត្រូវទេ! (ឧ. name@gmail.com)";
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      if (pass.length < 6) {
+        authError.textContent = "❌ Password ត្រូវមានយ៉ាងតិច ៦ តួអក្សរ!";
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.textContent = "កំពុងដំណើរការ...";
+
+      try {
+        if (isSignUpMode) {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+          const user = userCredential.user;
+
+          await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            username: username,
+            email: user.email,
+            role: "user",
+            createdAt: new Date().toISOString()
+          });
+
+          showToast("បង្កើតគណនី និងចូលប្រើប្រាស់ជោគជ័យ!");
+          authError.classList.add('hidden');
+        } else {
+          await signInWithEmailAndPassword(auth, email, pass);
+          showToast("Login ចូលប្រព័ន្ធជោគជ័យ!");
+          authError.classList.add('hidden');
+        }
+      } catch (err) {
+        authError.textContent = "❌ មានបញ្ហា៖ " + err.message;
+        authError.classList.remove('hidden');
+      } finally {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = isSignUpMode ? "Sign Up" : "Sign In";
+      }
+    });
+
+    window.userLogout = async function() {
+      await signOut(auth);
+      showToast("បានចាកចេញពីប្រព័ន្ធ!");
+    };  
+
+    // --- APP CALCULATION & FIREBASE SYNC LOGIC ---
+    let masterList = [
+      { id: '1', khName: 'ពូកដេក', enName: 'MATTRESSES', priceKg: 1.73, netKg: 138, grossKg: 138, hsCode: '94042990', cop: 15, sop: 0, vop: 10 }
+    ];
+    let declarationList = [];
+    let selectedMasterItem = null;
+    const CDL_FEE = 8000;
+    const MAX_PLUS_20_KHR = 1200000;
+
+    const qtyInput = document.getElementById('itemQty');
+    const taxKhInput = document.getElementById('itemTaxKh');
+    const exchangeRateInput = document.getElementById('exchangeRate');
+
+    window.adjustExchangeRate = function(amount) {
+      let currentVal = parseInt(exchangeRateInput.value) || 4083;
+      currentVal += amount;
+      if (currentVal < 1000) currentVal = 1000;
+      if (currentVal > 9999) currentVal = 9999;
+      exchangeRateInput.value = currentVal;
+      triggerLiveCard();
+      renderMultiItemTable();
+    };
+
+    qtyInput.addEventListener('input', function() {
+      if (this.value.trim() !== '') {
+        taxKhInput.value = '';
+        taxKhInput.disabled = true;
+      } else {
+        taxKhInput.disabled = false;
+      }
+      triggerLiveCard();
+    });
+
+    taxKhInput.addEventListener('input', function() {
+      if (this.value.trim() !== '') {
+        qtyInput.value = '';
+        qtyInput.disabled = true;
+      } else {
+        qtyInput.disabled = false;
+      }
+      triggerLiveCard();
+    });
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastMessage');
+      toast.textContent = msg;
+      toast.className = `p-4 rounded-xl text-sm font-semibold text-center transition-all ${isError ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => { toast.classList.add('hidden'); }, 4000);
+    }
+
+    function roundUp100(val) {
+      if (isNaN(val) || val <= 0) return 0;
+      return Math.ceil(val / 100) * 100;
+    }
+
+    function calcRate(cop, sop, vop) {
+      const c = (cop || 0) / 100;
+      const s = (sop || 0) / 100;
+      const v = (vop || 0) / 100;
+      return ((1 + c) * (1 + s) * (1 + v)) - 1;
+    }
+
+    onSnapshot(collection(db, "masterItems"), (snapshot) => {
+      if (!snapshot.empty) {
+        masterList = [];
+        snapshot.forEach((docSnap) => {
+          masterList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      }
+      setupSearchableDropdown();
+    }, (err) => {
+      setupSearchableDropdown();
+    });
+
+    function setupSearchableDropdown() {
+      const searchInput = document.getElementById('itemSearchInput');
+      const dropdownList = document.getElementById('itemDropdownList');
+      const hiddenIndex = document.getElementById('selectedMasterIndex');
+
+      function renderOptions(filterText = '') {
+        dropdownList.innerHTML = '';
+        const filtered = masterList.filter(item => 
+          (item.khName && item.khName.toLowerCase().includes(filterText)) ||
+          (item.enName && item.enName.toLowerCase().includes(filterText)) ||
+          (item.hsCode && item.hsCode.toLowerCase().includes(filterText))
+        );
+
+        if (filtered.length === 0) {
+          dropdownList.innerHTML = `<div class="p-3.5 text-xs text-rose-500 font-semibold text-center bg-rose-50/50">❌ ពុំមានមុខទំនិញរកឃើញឡើយ</div>`;
+          return;
+        }
+
+        filtered.forEach(item => {
+          const originalIdx = masterList.findIndex(i => i.id === item.id);
+          const div = document.createElement('div');
+          div.className = 'p-3 text-xs hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 cursor-pointer font-medium flex justify-between items-center transition duration-150 group';
+          div.innerHTML = `
+            <div class="space-y-0.5">
+              <div class="text-indigo-950 font-bold text-sm group-hover:text-blue-700 transition">🔹 ${item.khName}</div> 
+              <div class="text-emerald-700 font-semibold text-[11px] tracking-wide">${item.enName}</div>
+            </div>
+            <span class="bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-lg font-mono font-bold text-[11px] shadow-2xs">
+              HS: ${item.hsCode}
+            </span>
+          `;
+          div.addEventListener('click', () => {
+            searchInput.value = `${item.khName} (${item.enName})`;
+            hiddenIndex.value = originalIdx;
+            selectedMasterItem = item;
+            dropdownList.classList.add('hidden');
+            triggerLiveCard();
+          });
+          dropdownList.appendChild(div);
+        });
+      }
+
+      searchInput.addEventListener('focus', () => {
+        dropdownList.classList.remove('hidden');
+        renderOptions(searchInput.value.toLowerCase().trim());
+      });
+
+      searchInput.addEventListener('input', () => {
+        hiddenIndex.value = '';
+        selectedMasterItem = null;
+        dropdownList.classList.remove('hidden');
+        renderOptions(searchInput.value.toLowerCase().trim());
+        triggerLiveCard();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !dropdownList.contains(e.target)) {
+          dropdownList.classList.add('hidden');
+        }
+      });
+    }
+
+    exchangeRateInput.addEventListener('input', () => {
+      triggerLiveCard();
+      renderMultiItemTable();
+    });
+
+    function triggerLiveCard() {
+      let qtyNum = parseInt(qtyInput.value) || 0;
+      const taxKhVal = parseFloat(taxKhInput.value) || 0;
+      const exRate = parseFloat(exchangeRateInput.value) || 4083;
+      const receiptCard = document.getElementById('customsReceiptCard');
+
+      if (!selectedMasterItem || (qtyNum <= 0 && taxKhVal <= 0)) {
+        receiptCard.classList.add('hidden');
+        return null;
+      }
+
+      const m = selectedMasterItem;
+      const priceUnit = m.priceKg * m.grossKg;
+      const rate = calcRate(m.cop, m.sop, m.vop);
+
+      if (qtyNum === 0 && taxKhVal > 0) {
+        if (priceUnit > 0 && rate > 0 && exRate > 0) {
+          const targetTaxUsd = taxKhVal / exRate;
+          const targetPlus20Usd = targetTaxUsd / rate;
+          const targetTotalUsd = targetPlus20Usd / 1.20;
+          qtyNum = Math.round(targetTotalUsd / priceUnit) || 1;
+        }
+      }
+
+      const totalUsd = priceUnit * qtyNum;
+      const netTotal = m.netKg * qtyNum;
+      const grossTotal = m.grossKg * qtyNum;
+
+      const plus20Usd = totalUsd * 1.20;
+      const customsValueKhr = Math.round(plus20Usd * exRate);
+      const isOverLimit = customsValueKhr > MAX_PLUS_20_KHR;
+      
+      const copTax = roundUp100(customsValueKhr * ((m.cop || 0) / 100));
+      const sopBase = customsValueKhr + copTax;
+      const sopTax = roundUp100(sopBase * ((m.sop || 0) / 100));
+      const vopBase = customsValueKhr + copTax + sopTax;
+      const vopTax = roundUp100(vopBase * ((m.vop || 0) / 100));
+      
+      const totalTaxKhr = taxKhVal > 0 ? taxKhVal : (copTax + sopTax + vopTax);
+
+      document.getElementById('cardHsCodeDisplay').textContent = `HS: ${m.hsCode}`;
+      document.getElementById('cardKhName').textContent = m.khName;
+      document.getElementById('cardEnName').textContent = m.enName;
+      document.getElementById('cardNet').textContent = `${netTotal.toFixed(2)} KG`;
+      document.getElementById('cardGross').textContent = `${grossTotal.toFixed(2)} KG`;
+      document.getElementById('cardTotalUsd').textContent = `$${totalUsd.toFixed(2)}`;
+      
+      document.getElementById('cardPlus20Usd').textContent = `$${plus20Usd.toFixed(2)}`;
+      
+      const cardCustomsKhrEl = document.getElementById('cardCustomsKhr');
+      const plus20KhrBox = document.getElementById('plus20KhrBox');
+      const limitWarningBadge = document.getElementById('limitWarningBadge');
+
+      cardCustomsKhrEl.textContent = `${customsValueKhr.toLocaleString()} KHR`;
+      if (isOverLimit) {
+        cardCustomsKhrEl.className = "text-rose-600 font-extrabold text-sm";
+        plus20KhrBox.classList.add('bg-rose-50', 'border', 'border-rose-300');
+        limitWarningBadge.classList.remove('hidden');
+      } else {
+        cardCustomsKhrEl.className = "text-blue-800 font-bold";
+        plus20KhrBox.classList.remove('bg-rose-50', 'border', 'border-rose-300');
+        limitWarningBadge.classList.add('hidden');
+      }
+      
+      document.getElementById('cardCopRate').textContent = m.cop;
+      document.getElementById('cardSopRate').textContent = m.sop;
+      document.getElementById('cardVopRate').textContent = m.vop;
+      
+      document.getElementById('cardCopAmount').textContent = `${copTax.toLocaleString()} KHR`;
+      document.getElementById('cardSopAmount').textContent = `${sopTax.toLocaleString()} KHR`;
+      document.getElementById('cardVopAmount').textContent = `${vopTax.toLocaleString()} KHR`;
+      document.getElementById('cardTotalTax').textContent = `${totalTaxKhr.toLocaleString()} KHR`;
+
+      receiptCard.classList.remove('hidden');
+
+      return { qtyNum, totalUsd, netTotal, grossTotal, plus20Usd, customsValueKhr, isOverLimit, copTax, sopTax, vopTax, totalTaxKhr, priceUnit, taxKhVal };
+    }
+
+    document.getElementById('addItemForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const editIdx = parseInt(document.getElementById('editItemIndex').value);
+      const qtyNum = parseInt(qtyInput.value) || 0;
+      const taxKhVal = parseFloat(taxKhInput.value) || 0;
+      const unitStr = document.getElementById('itemUnit').value.trim() || 'CTN';
+
+      if (!selectedMasterItem) {
+        showToast("សូមជ្រើសរើសមុខទំនិញជាមុនសិន!", true);
+        return;
+      }
+
+      if (qtyNum <= 0 && taxKhVal <= 0) {
+        showToast("សូមបំពេញ 'ចំនួន' ឬ 'ប្រាក់ពន្ធ' យ៉ាងហោចណាស់មួយ!", true);
+        return;
+      }
+
+      const calcRes = triggerLiveCard();
+
+      if (calcRes.isOverLimit) {
+        showToast("⚠️ មិនអាចបន្ថែមបានទេ! តម្លៃបូក 20% (៛) បានលើសចំនួនកំណត់ 1,200,000 រៀលហើយ!", true);
+        return;
+      }
+
+      const finalQtyInt = Math.round(calcRes.qtyNum);
+
+      const payload = {
+        master: selectedMasterItem,
+        qtyNum: finalQtyInt,
+        qtyStr: `${finalQtyInt} ${unitStr}`,
+        customTaxKh: taxKhVal > 0 ? taxKhVal : null
+      };
+
+      if (editIdx >= 0) {
+        declarationList[editIdx] = payload;
+        showToast("បានធ្វើបច្ចុប្បន្នភាពទំនិញជោគជ័យ!");
+      } else {
+        declarationList.push(payload);
+        showToast("បានបន្ថែមទំនិញចូលតារាងគណនាជោគជ័យ!");
+      }
+
+      renderMultiItemTable();
+      resetForm();
+    });
+
+    function renderMultiItemTable() {
+      const tbody = document.getElementById('multiItemTableBody');
+      const tfoot = document.getElementById('multiItemTableFoot');
+      const exRate = parseFloat(exchangeRateInput.value) || 4083;
+
+      tbody.innerHTML = '';
+      let grandTotalUsd = 0;
+      let grandNetKg = 0;
+      let grandGrossKg = 0;
+      let grandTotalTaxKhr = 0;
+      let grandTotalKhWithCdl = 0;
+
+      if (declarationList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" class="p-4 text-center text-slate-400 font-medium">ពុំទាន់មានទិន្នន័យទំនិញក្នុងតារាងនៅឡើយទេ</td></tr>`;
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      declarationList.forEach((item, idx) => {
+        const m = item.master;
+        const qtyInt = Math.round(item.qtyNum);
+        const priceUnit = m.priceKg * m.grossKg;
+        const totalUsd = priceUnit * qtyInt;
+        const netTotal = m.netKg * qtyInt;
+        const grossTotal = m.grossKg * qtyInt;
+
+        const plus20Usd = totalUsd * 1.20;
+        const customsValueKhr = Math.round(plus20Usd * exRate);
+        const isOverLimit = customsValueKhr > MAX_PLUS_20_KHR;
+        
+        const copTax = roundUp100(customsValueKhr * ((m.cop || 0) / 100));
+        const sopBase = customsValueKhr + copTax;
+        const sopTax = roundUp100(sopBase * ((m.sop || 0) / 100));
+        const vopBase = customsValueKhr + copTax + sopTax;
+        const vopTax = roundUp100(vopBase * ((m.vop || 0) / 100));
+        
+        const calculatedTaxKhr = copTax + sopTax + vopTax;
+        const totalTaxKhr = item.customTaxKh ? item.customTaxKh : calculatedTaxKhr;
+        const totalKhWithCdl = totalTaxKhr + CDL_FEE;
+
+        grandTotalUsd += totalUsd;
+        grandNetKg += netTotal;
+        grandGrossKg += grossTotal;
+        grandTotalTaxKhr += totalTaxKhr;
+        grandTotalKhWithCdl += totalKhWithCdl;
+
+        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
+        const displayQtyStr = `${qtyInt} ${unitLabel}`;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="p-3 border-r font-medium text-slate-500">${idx + 1}</td>
+          <td class="p-3 border-r font-bold text-indigo-950 text-left">${m.khName}</td>
+          <td class="p-3 border-r text-slate-600 text-left">${m.enName}</td>
+          <td class="p-3 border-r font-bold text-blue-700">${displayQtyStr}</td>
+          <td class="p-3 border-r">$ ${priceUnit.toFixed(2)}</td>
+          <td class="p-3 border-r font-bold text-purple-700">$ ${totalUsd.toFixed(2)}</td>
+          <td class="p-3 border-r font-semibold text-emerald-700">${netTotal.toFixed(2)} KG</td>
+          <td class="p-3 border-r font-semibold text-amber-700">${grossTotal.toFixed(2)} KG</td>
+          <td class="p-3 border-r font-mono text-slate-600">${m.hsCode}</td>
+          <td class="p-3 border-r font-semibold ${isOverLimit ? 'bg-rose-100 text-rose-700 font-bold' : 'text-slate-700'}">
+            ៛ ${customsValueKhr.toLocaleString()}
+            ${isOverLimit ? '<div class="text-[10px] text-rose-600 font-bold">⚠️ បានលើសចំនួនកំណត់</div>' : ''}
+          </td>
+          <td class="p-3 border-r font-bold text-blue-800 bg-blue-50/50">៛ ${totalTaxKhr.toLocaleString()}</td>
+          <td class="p-3 border-r font-bold text-blue-950 bg-amber-100/60">
+            ៛ ${totalKhWithCdl.toLocaleString()}
+            <div class="text-[9px] text-slate-500 font-normal">(រួមកម្រៃ CDL 8,000៛)</div>
+          </td>
+          <td class="p-3 text-center space-x-1">
+            <button onclick="editItem(${idx})" class="bg-sky-500 hover:bg-sky-600 text-white px-2 py-1 rounded-md text-[11px]">កែប្រែ</button>
+            <button onclick="deleteItem(${idx})" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded-md text-[11px]">លុប</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      tfoot.innerHTML = `
+        <tr class="bg-slate-200/90 text-slate-900">
+          <td colspan="5" class="p-3 text-right font-bold text-sm border-r">សរុប (Grand Total):</td>
+          <td class="p-3 text-center font-bold text-purple-900 border-r">$ ${grandTotalUsd.toFixed(2)}</td>
+          <td class="p-3 text-center font-bold text-emerald-900 border-r">${grandNetKg.toFixed(2)} KG</td>
+          <td class="p-3 text-center font-bold text-amber-900 border-r">${grandGrossKg.toFixed(2)} KG</td>
+          <td colspan="2" class="border-r"></td>
+          <td class="p-3 text-center font-bold text-blue-900 border-r text-sm">៛ ${grandTotalTaxKhr.toLocaleString()}</td>
+          <td class="p-3 text-center font-bold text-blue-950 border-r bg-amber-200 text-sm">៛ ${grandTotalKhWithCdl.toLocaleString()}</td>
+          <td></td>
+        </tr>
+      `;
+    }
+
+    window.editItem = function(idx) {
+      const item = declarationList[idx];
+      selectedMasterItem = item.master;
+      
+      document.getElementById('editItemIndex').value = idx;
+      document.getElementById('itemSearchInput').value = `${item.master.khName} (${item.master.enName})`;
+      
+      qtyInput.disabled = false;
+      taxKhInput.disabled = false;
+
+      qtyInput.value = item.qtyNum ? Math.round(item.qtyNum) : '';
+      taxKhInput.value = item.customTaxKh || '';
+
+      document.getElementById('submitBtn').textContent = 'ធ្វើបច្ចុប្បន្នភាព';
+      document.getElementById('cancelBtn').classList.remove('hidden');
+      triggerLiveCard();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteItem = function(idx) {
+      declarationList.splice(idx, 1);
+      renderMultiItemTable();
+      showToast("បានលុបទំនិញចេញពីតារាង!");
+    };
+
+    window.resetForm = function() {
+      document.getElementById('addItemForm').reset();
+      document.getElementById('editItemIndex').value = '-1';
+      document.getElementById('selectedMasterIndex').value = '';
+      selectedMasterItem = null;
+      qtyInput.disabled = false;
+      taxKhInput.disabled = false;
+      document.getElementById('submitBtn').textContent = '+ បន្ថែមចូលតារាង';
+      document.getElementById('cancelBtn').classList.add('hidden');
+      document.getElementById('customsReceiptCard').classList.add('hidden');
+    };
+
+    window.exportToExcel = function() {
+      if (declarationList.length === 0) return showToast("ពុំមានទិន្នន័យសម្រាប់ Export ឡើយ!", true);
+      const exRate = parseFloat(exchangeRateInput.value) || 4083;
+      
+      const rows = [
+        ["តារាងមុខទំនិញគិតប្រាក់ពន្ធសរុប (CUSTOMS TAX DECLARATION INVOICE)"],
+        [`កាលបរិច្ឆេទ: ${new Date().toISOString().slice(0,10)}`, "", "", "", "", "", "", "", "", "", "", "Exchange Rate:", exRate],
+        []
+      ];
+
+      rows.push([
+        "ល.រ", "មុខទំនិញជា ខ្មែរ", "មុខទំនិញជា អង់គ្លេស", "ចំនួន", "តម្លៃមួយឯកតា ($)", 
+        "Total ($)", "Net (KG)", "Gross (KG)", "HS.Code",
+        "តម្លៃបូក 20% (៛)", "ប្រាក់ពន្ធ (៛)", "ប្រាក់ពន្ធសរុប រួម CDL 8,000៛ (៛)"
+      ]);
+
+      let totalKhAll = 0;
+      declarationList.forEach((item, idx) => {
+        const m = item.master;
+        const qtyInt = Math.round(item.qtyNum);
+        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
+        const priceUnit = m.priceKg * m.grossKg;
+        const totalUsd = priceUnit * qtyInt;
+        const plus20Usd = totalUsd * 1.20;
+        const customsValKhr = Math.round(plus20Usd * exRate);
+        const cop = roundUp100(customsValKhr * (m.cop / 100));
+        const sop = roundUp100((customsValKhr + cop) * (m.sop / 100));
+        const vop = roundUp100((customsValKhr + cop + sop) * (m.vop / 100));
+        const calculatedTaxKhr = cop + sop + vop;
+        const taxKhr = item.customTaxKh ? item.customTaxKh : calculatedTaxKhr;
+        const totalKh = taxKhr + CDL_FEE;
+
+        totalKhAll += totalKh;
+
+        rows.push([
+          idx + 1, m.khName, m.enName, `${qtyInt} ${unitLabel}`, priceUnit, totalUsd, m.netKg * qtyInt, m.grossKg * qtyInt,
+          m.hsCode, customsValKhr, taxKhr, totalKh
+        ]);
+      });
+
+      rows.push([]);
+      rows.push(["", "", "", "", "", "", "", "", "", "", "ប្រាក់ពន្ធសរុបទាំងអស់:", totalKhAll]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Customs_Tax_Declaration");
+      XLSX.writeFile(wb, `Tax_Declaration_${new Date().toISOString().slice(0,10)}.xlsx`);
+    };
+
+    window.exportToPDF = function() {
+      if (declarationList.length === 0) return showToast("ពុំមានទិន្នន័យសម្រាប់ Export ឡើយ!", true);
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('l', 'mm', 'a4');
+      const exRate = parseFloat(exchangeRateInput.value) || 4083;
+
+      doc.setFillColor(30, 58, 138);
+      doc.rect(0, 0, 297, 26, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.text("CUSTOMS TAX DECLARATION INVOICE", 14, 14);
+      doc.setFontSize(9);
+      doc.text(`Exchange Rate: ${exRate.toLocaleString()} KHR | Date: ${new Date().toLocaleDateString()}`, 14, 21);
+
+      const headers = [["No", "Khmer Item", "English Item", "Qty", "Price/Unit", "Total ($)", "Net", "Gross", "HS.Code", "Plus 20% (KHR)", "Tax (KHR)", "Total KH (KHR)"]];
+      
+      let grandTotalTax = 0;
+      const rows = declarationList.map((item, idx) => {
+        const m = item.master;
+        const qtyInt = Math.round(item.qtyNum);
+        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
+        const priceUnit = m.priceKg * m.grossKg;
+        const totalUsd = priceUnit * qtyInt;
+        const plus20Usd = totalUsd * 1.20;
+        const customsValKhr = Math.round(plus20Usd * exRate);
+        const cop = roundUp100(customsValKhr * (m.cop / 100));
+        const sop = roundUp100((customsValKhr + cop) * (m.sop / 100));
+        const vop = roundUp100((customsValKhr + cop + sop) * (m.vop / 100));
+        const calculatedTaxKhr = cop + sop + vop;
+        const taxKhr = item.customTaxKh ? item.customTaxKh : calculatedTaxKhr;
+        const totalKh = taxKhr + CDL_FEE;
+
+        grandTotalTax += totalKh;
+
+        return [
+          idx + 1, m.khName, m.enName, `${qtyInt} ${unitLabel}`, "$" + priceUnit.toFixed(2), "$" + totalUsd.toFixed(2),
+          (m.netKg * qtyInt).toFixed(1) + " KG", (m.grossKg * qtyInt).toFixed(1) + " KG", m.hsCode,
+          customsValKhr.toLocaleString(),
+          taxKhr.toLocaleString(), totalKh.toLocaleString()
+        ];
+      });
+
+      doc.autoTable({
+        head: headers, body: rows, startY: 32, theme: 'grid',
+        headStyles: { fillColor: [30, 58, 138], halign: 'center', fontSize: 8 },
+        bodyStyles: { fontSize: 7.5, halign: 'center' },
+        columnStyles: { 11: { fillColor: [254, 243, 199], fontStyle: 'bold', textColor: [30, 58, 138] } }
+      });
+
+      const finalY = doc.lastAutoTable.finalY || 35;
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(180, finalY + 5, 103, 12, 2, 2, 'F');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 58, 138);
+      doc.text(`Total Tax KH: R ${grandTotalTax.toLocaleString()}`, 185, finalY + 13);
+
+      doc.save(`Customs_Tax_Invoice_${new Date().toISOString().slice(0,10)}.pdf`);
+    };
+    
+  </script>
+</body>
+</html>

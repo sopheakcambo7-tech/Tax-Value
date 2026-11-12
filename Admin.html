@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - គ្រប់គ្រងបញ្ជីទិន្នន័យពន្ធទំនិញ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style> body { font-family: 'Kantumruy Pro', sans-serif; } </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-6 text-slate-800 flex flex-col items-center">
+
+  <!-- ================= 1. LOGIN SECTION (បង្ហាញដំបូងបង្អស់) ================= -->
+  <div id="loginSection" class="w-full max-w-md mt-16 bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-6">
+    <div class="text-center space-y-2">
+      <div class="text-4xl">🔐</div>
+      <h2 class="text-xl font-bold text-blue-950">Admin Authentication</h2>
+      <p class="text-xs text-slate-500">សូមបញ្ចូលគណនីសម្ងាត់ដើម្បីចូលកាន់ប្រព័ន្ធ Admin</p>
+    </div>
+
+    <div id="loginError" class="hidden p-3 bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl text-center"></div>
+
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Admin Email</label>
+        <input type="email" id="adminEmail" placeholder="ឧ. yourname@gmail.com" required 
+               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+        <input type="password" id="adminPass" placeholder="••••••••" required 
+               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
+      </div>
+      <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+        Login ចូលប្រព័ន្ធ Cloud
+      </button>
+    </form>
+    <div class="text-center">
+      <a href="index.html" class="text-xs text-blue-600 hover:underline">← ត្រឡប់ទៅទំព័រគណនាពន្ធ (User Page)</a>
+    </div>
+  </div>
+
+
+  <!-- ================= 2. ADMIN DASHBOARD (លាក់រហូតទាល់តែ Login ត្រូវ) ================= -->
+  <div id="adminDashboard" class="hidden max-w-7xl w-full mx-auto space-y-6">
+    
+    <!-- Top Header -->
+    <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-xl md:text-2xl font-bold text-blue-950 flex items-center gap-2">
+          <span>⚙️</span> Admin Panel - គ្រប់គ្រងទិន្នន័យទំនិញ (Cloud Master Data)
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">Realtime Cloud Sync System for Customs Valuation</p>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">
+          🧮 ទៅកាន់ទំព័រគណនាពន្ធ
+        </a>
+        <button onclick="adminLogout()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition">
+          🚪 ចាកចេញ (Log Out)
+        </button>
+      </div>
+    </header>
+
+    <!-- Notification Toast -->
+    <div id="toastMessage" class="hidden p-4 rounded-xl text-sm font-semibold text-center transition-all shadow-sm"></div>
+
+    <!-- Main Content Section -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 space-y-6">
+      
+      <!-- Input Form for Master Data -->
+      <form id="masterForm" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 bg-blue-50/40 p-4 md:p-5 rounded-xl border border-blue-100">
+        <input type="hidden" id="masterDocId" value="">
+        
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">មុខទំនិញជា ខ្មែរ *</label><input type="text" id="khName" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">មុខទំនិញជា អង់គ្លេស *</label><input type="text" id="enName" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">Price/kg ($) *</label><input type="number" step="0.01" min="0.01" id="priceKg" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">Net (KG) *</label><input type="number" step="0.01" min="0.01" id="netKg" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">Gross (KG) *</label><input type="number" step="0.01" min="0.01" id="grossKg" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">HS.Code *</label><input type="text" id="hsCode" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">COP (%) *</label><input type="number" step="0.01" min="0" id="cop" value="15" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">SOP (%) *</label><input type="number" step="0.01" min="0" id="sop" value="0" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        <div><label class="block text-xs font-semibold text-slate-700 mb-1">VOP (%) *</label><input type="number" step="0.01" min="0" id="vop" value="10" required class="w-full px-3 py-2 bg-white border rounded-xl text-sm outline-none"></div>
+        
+        <div class="md:col-span-2 lg:col-span-3 flex items-end gap-2">
+          <button type="submit" id="masterSubmitBtn" class="bg-blue-800 hover:bg-blue-900 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition shadow-sm">រក្សាទុកទៅ Cloud</button>
+          <button type="button" id="resetMasterBtn" class="bg-slate-400 hover:bg-slate-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm">បោះបង់</button>
+        </div>
+      </form>
+
+      <!-- Controls: Search & Excel Import/Export -->
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="w-full md:w-72">
+          <input type="text" id="searchMasterInput" placeholder="🔍 ស្វែងរកមុខទំនិញ..." class="w-full px-3 py-2 border rounded-xl text-sm bg-slate-50 outline-none">
+        </div>
+        <div class="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+          <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-2 shadow-xs transition cursor-pointer">
+            📥 Upload Excel ចូល Cloud
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden">
+          </label>
+          <button id="exportExcelBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-2 shadow-xs transition">
+            📤 Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Master Data Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="bg-slate-100 text-slate-700 font-semibold border-b">
+            <tr>
+              <th class="p-3 text-center border-r">ល.រ</th>
+              <th class="p-3 border-r">មុខទំនិញជា ខ្មែរ</th>
+              <th class="p-3 border-r">មុខទំនិញជា អង់គ្លេស</th>
+              <th class="p-3 text-right border-r">Price/kg</th>
+              <th class="p-3 text-right border-r">Net</th>
+              <th class="p-3 text-right border-r">Gross</th>
+              <th class="p-3 text-center border-r">HS.Code</th>
+              <th class="p-3 text-right border-r">COP%</th>
+              <th class="p-3 text-right border-r">SOP%</th>
+              <th class="p-3 text-right border-r">VOP%</th>
+              <th class="p-3 text-center">សកម្មភាព</th>
+            </tr>
+          </thead>
+          <tbody id="masterTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+
+    </section>
+  </div>
+
+
+  <!-- ================= JAVASCRIPT AUTH & FIREBASE SYNC ================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDhklIxVwFMTdR-N8MpRQ2_ak0efEHNdXk",
+      authDomain: "tax-value.firebaseapp.com",
+      projectId: "tax-value",
+      storageBucket: "tax-value.firebasestorage.app",
+      messagingSenderId: "1039410575503",
+      appId: "1:1039410575503:web:847adb8b120553a1c618fa"
+    };
+
+    let app, db;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+    } catch(e) {
+      console.warn("Firebase config fallback");
+    }
+
+    let masterList = [];
+    const auth = getAuth(app);
+
+    // ពិនិត្យស្ថានភាព Login ស្វ័យប្រវត្តិ
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('adminDashboard').classList.remove('hidden');
+        fetchMasterDataRealtime();
+      } else {
+        document.getElementById('adminDashboard').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+      }
+    });
+
+    // មុខងារចុច Login ផ្ទៀងផ្ទាត់ជាមួយ Cloud
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('adminEmail').value.trim();
+      const pass = document.getElementById('adminPass').value.trim();
+      const loginError = document.getElementById('loginError');
+
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        loginError.classList.add('hidden');
+      } catch (error) {
+        loginError.textContent = '❌ Email ឬ Password មិនត្រឹមត្រូវទេ!';
+        loginError.classList.remove('hidden');
+      }
+    });
+
+    // មុខងារ Log Out
+    window.adminLogout = async function() {
+      await signOut(auth);
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toastMessage');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.className = `p-4 rounded-xl text-sm font-semibold text-center transition-all ${isError ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`;
+      toast.classList.remove('hidden');
+      setTimeout(() => { toast.classList.add('hidden'); }, 4000);
+    }
+
+    // --- REALTIME MASTER DATA SYNC ---
+    function fetchMasterDataRealtime() {
+      if (!db) return;
+      onSnapshot(collection(db, "masterItems"), (snapshot) => {
+        masterList = [];
+        snapshot.forEach((docSnap) => {
+          masterList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderMasterTable();
+      }, (err) => {
+        console.error("Cloud sync error:", err);
+      });
+    }
+
+    function renderMasterTable() {
+      const tbody = document.getElementById('masterTableBody');
+      const searchVal = (document.getElementById('searchMasterInput')?.value || '').toLowerCase().trim();
+      tbody.innerHTML = '';
+
+      const filteredList = masterList.filter(item => 
+        (item.khName && item.khName.toLowerCase().includes(searchVal)) ||
+        (item.enName && item.enName.toLowerCase().includes(searchVal)) ||
+        (item.hsCode && item.hsCode.toLowerCase().includes(searchVal))
+      );
+
+      if (filteredList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-400">ពុំមានទិន្នន័យនៅលើ Cloud ឡើយ</td></tr>`;
+        return;
+      }
+
+      filteredList.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="p-3 text-center border-r font-medium">${idx + 1}</td>
+          <td class="p-3 border-r font-medium">${item.khName || ''}</td>
+          <td class="p-3 border-r">${item.enName || ''}</td>
+          <td class="p-3 text-right border-r">$ ${Number(item.priceKg || 0).toFixed(2)}</td>
+          <td class="p-3 text-right border-r">${Number(item.netKg || 0).toFixed(2)} KG</td>
+          <td class="p-3 text-right border-r">${Number(item.grossKg || 0).toFixed(2)} KG</td>
+          <td class="p-3 text-center border-r font-mono">${item.hsCode || ''}</td>
+          <td class="p-3 text-right border-r">${item.cop || 15}%</td>
+          <td class="p-3 text-right border-r">${item.sop || 0}%</td>
+          <td class="p-3 text-right border-r">${item.vop || 10}%</td>
+          <td class="p-3 text-center space-x-1">
+            <button onclick="editMasterItem('${item.id}')" class="bg-sky-500 hover:bg-sky-600 text-white px-2 py-1 rounded text-xs">កែប្រែ</button>
+            <button onclick="deleteMasterItem('${item.id}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded text-xs">លុប</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- ADD / EDIT MASTER ITEM ---
+    document.getElementById('masterForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const docId = document.getElementById('masterDocId').value;
+      const data = {
+        khName: document.getElementById('khName').value.trim(),
+        enName: document.getElementById('enName').value.trim(),
+        priceKg: parseFloat(document.getElementById('priceKg').value),
+        netKg: parseFloat(document.getElementById('netKg').value),
+        grossKg: parseFloat(document.getElementById('grossKg').value),
+        hsCode: document.getElementById('hsCode').value.trim(),
+        cop: parseFloat(document.getElementById('cop').value),
+        sop: parseFloat(document.getElementById('sop').value),
+        vop: parseFloat(document.getElementById('vop').value)
+      };
+
+      try {
+        if (db) {
+          if (docId) {
+            await updateDoc(doc(db, "masterItems", docId), data);
+            showToast("បានកែប្រែទិន្នន័យលើ Cloud ជោគជ័យ!");
+          } else {
+            await addDoc(collection(db, "masterItems"), data);
+            showToast("បានបន្ថែមទំនិញថ្មីទៅ Cloud ជោគជ័យ!");
+          }
+          resetMasterForm();
+        }
+      } catch (err) {
+        showToast("មានបញ្ហាក្នុងការរក្សាទុក៖ " + err.message, true);
+      }
+    });
+
+    window.editMasterItem = function(id) {
+      const item = masterList.find(i => i.id === id);
+      if (!item) return;
+      document.getElementById('masterDocId').value = item.id;
+      document.getElementById('khName').value = item.khName;
+      document.getElementById('enName').value = item.enName;
+      document.getElementById('priceKg').value = item.priceKg;
+      document.getElementById('netKg').value = item.netKg;
+      document.getElementById('grossKg').value = item.grossKg;
+      document.getElementById('hsCode').value = item.hsCode;
+      document.getElementById('cop').value = item.cop;
+      document.getElementById('sop').value = item.sop;
+      document.getElementById('vop').value = item.vop;
+      document.getElementById('masterSubmitBtn').textContent = 'ធ្វើបច្ចុប្បន្នភាព';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteMasterItem = async function(id) {
+      if (!confirm("តើអ្នកពិតជាចង់លុបទំនិញនេះមែនទេ?")) return;
+      try {
+        if (db) {
+          await deleteDoc(doc(db, "masterItems", id));
+          showToast("បានលុបទំនិញជោគជ័យ!");
+        }
+      } catch (err) {
+        showToast("លុបមិនបានសម្រេច!", true);
+      }
+    };
+
+    function resetMasterForm() {
+      document.getElementById('masterForm').reset();
+      document.getElementById('masterDocId').value = '';
+      document.getElementById('masterSubmitBtn').textContent = 'រក្សាទុកទៅ Cloud';
+    }
+
+    document.getElementById('resetMasterBtn').addEventListener('click', resetMasterForm);
+    document.getElementById('searchMasterInput').addEventListener('input', renderMasterTable);
+
+    // --- EXPORT & UPLOAD EXCEL ---
+    document.getElementById('exportExcelBtn').addEventListener('click', function() {
+      if (masterList.length === 0) return showToast("ពុំមានទិន្នន័យឡើយ!", true);
+      const data = masterList.map((item, idx) => ({
+        "ល.រ": idx + 1, "មុខទំនិញខ្មែរ": item.khName, "មុខទំនិញអង់គ្លេស": item.enName,
+        "Price/kg": item.priceKg, "Net": item.netKg, "Gross": item.grossKg,
+        "HS.Code": item.hsCode, "COP%": item.cop, "SOP%": item.sop, "VOP%": item.vop
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Master_Data");
+      XLSX.writeFile(wb, `Master_Data_${new Date().toISOString().slice(0,10)}.xlsx`);
+    });
+
+    document.getElementById('excelFileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(event) {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+          let count = 0;
+          for (let row of jsonData) {
+            const kh = row["មុខទំនិញខ្មែរ"] || row["khName"] || "";
+            const en = row["មុខទំនិញអង់គ្លេស"] || row["enName"] || "";
+            const hs = String(row["HS.Code"] || row["hsCode"] || "");
+            if (kh || en) {
+              await addDoc(collection(db, "masterItems"), {
+                khName: String(kh), enName: String(en),
+                priceKg: parseFloat(row["Price/kg"] || row["priceKg"] || 0),
+                netKg: parseFloat(row["Net"] || row["netKg"] || 0),
+                grossKg: parseFloat(row["Gross"] || row["grossKg"] || 0),
+                hsCode: hs,
+                cop: parseFloat(row["COP%"] || row["cop"] || 15),
+                sop: parseFloat(row["SOP%"] || row["sop"] || 0),
+                vop: parseFloat(row["VOP%"] || row["vop"] || 10)
+              });
+              count++;
+            }
+          }
+          showToast(`បាន Upload ចូល Cloud สำเร็จចំនួន ${count} មុខទំនិញ!`);
+        } catch (err) {
+          showToast("មានបញ្ហាក្នុងការអាន File Excel!", true);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    });
+  </script>
+</body>
+</html>
