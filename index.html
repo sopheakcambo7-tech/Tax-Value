@@ -7,8 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style> 
     body { font-family: 'Kantumruy Pro', sans-serif; } 
     input[type=number]::-webkit-inner-spin-button, 
@@ -17,7 +16,7 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col items-center">
 
-  <!-- ================= AUTH MODAL (SIGN IN / SIGN UP) - បាំងជិត Background ================= -->
+  <!-- ================= AUTH MODAL (SIGN IN / SIGN UP) ================= -->
   <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 space-y-6">
       
@@ -30,7 +29,6 @@
       <div id="authError" class="hidden p-3 bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl text-center"></div>
 
       <form id="authForm" class="space-y-4">
-        <!-- Username Field (លាក់ពេល Sign In, បង្ហាញពេល Sign Up) -->
         <div id="usernameFieldBox" class="hidden">
           <label class="block text-xs font-bold text-slate-700 mb-1">ឈ្មោះអ្នកប្រើប្រាស់ (Username)</label>
           <input type="text" id="authUsername" placeholder="ឧ. Username" 
@@ -43,7 +41,6 @@
                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
         </div>
         
-        <!-- Password Field with Toggle Eye Icon -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
           <div class="relative">
@@ -80,23 +77,13 @@
         <p class="text-xs text-slate-500 mt-1">Khmer Customs Multi-Item Valuation & Tax Invoice Declaration</p>
       </div>
       
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- Exchange Rate Input with Stepper (+ / -) -->
-        <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl shadow-xs">
-          <label class="text-xs font-bold text-amber-900">Ex. Rate :</label>
-          <div class="flex items-center bg-white border border-amber-300 rounded-lg overflow-hidden">
-            <button type="button" onclick="adjustExchangeRate(-1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">-</button>
-            <input type="number" id="exchangeRate" value="4083" min="1000" max="9999" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" class="w-16 px-1 py-1 text-sm font-bold text-center outline-none">
-            <button type="button" onclick="adjustExchangeRate(1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">+</button>
-          </div>
-          <span class="text-xs font-semibold text-amber-800">៛</span>
-        </div>
-
-        <!-- User Profile & Logout -->
-        <div id="userProfileBox" class="hidden flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
-          <span class="font-bold text-slate-700" id="userEmailDisplay">user@gmail.com</span>
-          <button onclick="userLogout()" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg font-bold transition">Logout</button>
-        </div>
+      <!-- User Profile & Logout -->
+      <div id="userProfileBox" class="hidden flex flex-wrap items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+        <span class="font-bold text-slate-700" id="userEmailDisplay">user@gmail.com</span>
+        <a id="goAdminPanelBtn" href="Admin.html" class="hidden bg-blue-800 hover:bg-blue-900 text-white px-2.5 py-1 rounded-lg font-bold transition">
+          ⚙️ Admin Panel
+        </a>
+        <button onclick="userLogout()" class="bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1 rounded-lg font-bold transition">Logout</button>
       </div>
     </header>
 
@@ -122,14 +109,10 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">ចំនួន និងប្រភេទ (Qty & Unit)</label>
-            <div class="flex gap-1.5">
-              <input type="number" step="1" min="1" id="itemQty" placeholder="ឧ. 10" 
-                     oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                     class="w-3/5 px-2.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
-              <input type="text" id="itemUnit" value="CTN" placeholder="CTN" 
-                     class="w-2/5 px-2 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-center font-semibold outline-none">
-            </div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ចំនួន (Qty)</label>
+            <input type="number" step="1" min="1" id="itemQty" placeholder="ឧ. 10" 
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                   class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-200 disabled:cursor-not-allowed">
           </div>
 
           <div>
@@ -184,6 +167,10 @@
               <div class="flex justify-between text-[11px]"><span>SOP (<span id="cardSopRate">0</span>%):</span> <span id="cardSopAmount">0 KHR</span></div>
               <div class="flex justify-between text-[11px]"><span>VOP (<span id="cardVopRate">10</span>%):</span> <span id="cardVopAmount">0 KHR</span></div>
               <div class="flex justify-between font-bold text-rose-600 pt-1 border-t"><span>ប្រាក់ពន្ធសរុប (Total Tax):</span> <span id="cardTotalTax">0 KHR</span></div>
+              <div class="flex justify-between font-bold text-blue-950 bg-amber-100/80 px-2 py-1.5 rounded-md mt-1 border border-amber-300">
+                <span>ប្រាក់ពន្ធសរុប (រួម CDL 8,000៛):</span> 
+                <span id="cardTotalTaxWithCdl" class="text-blue-900">0 KHR</span>
+              </div>
             </div>
           </div>
         </div>
@@ -193,18 +180,31 @@
 
     <!-- MULTI-ITEM DECLARATION TABLE -->
     <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 space-y-4">
-      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-3 border-b border-slate-100">
         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
           <span>📋</span> តារាងមុខទំនិញគិតប្រាក់ពន្ធសរុប (Multi-Item Declaration List)
         </h2>
 
-        <div class="flex items-center gap-2">
-          <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
-            📥 Export Excel
-          </button>
-          <button onclick="exportToPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
-            📄 Export PDF
-          </button>
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end">
+          <!-- Exchange Rate Input with Stepper (+ / -) -->
+          <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl shadow-xs">
+            <label class="text-xs font-bold text-amber-900">Ex. Rate :</label>
+            <div class="flex items-center bg-white border border-amber-300 rounded-lg overflow-hidden">
+              <button type="button" onclick="adjustExchangeRate(-1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">-</button>
+              <input type="number" id="exchangeRate" value="4083" min="1000" max="9999" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" class="w-16 px-1 py-1 text-sm font-bold text-center outline-none">
+              <button type="button" onclick="adjustExchangeRate(1)" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition">+</button>
+            </div>
+            <span class="text-xs font-semibold text-amber-800">៛</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+              📥 Export Excel
+            </button>
+            <button onclick="exportToPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+              📄 Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
@@ -258,6 +258,7 @@
     const authModal = document.getElementById('authModal');
     const userProfileBox = document.getElementById('userProfileBox');
     const userEmailDisplay = document.getElementById('userEmailDisplay');
+    const goAdminPanelBtn = document.getElementById('goAdminPanelBtn');
 
     let isSignUpMode = false;
     const authTitle = document.getElementById('authTitle');
@@ -268,7 +269,6 @@
     const usernameFieldBox = document.getElementById('usernameFieldBox');
     const authUsernameInput = document.getElementById('authUsername');
 
-    // មុខងារបើក/បិទបង្ហាញ Password
     window.togglePasswordVisibility = function() {
       const passInput = document.getElementById('authPass');
       const eyeIcon = document.getElementById('eyeIcon');
@@ -306,32 +306,43 @@
       authError.classList.add('hidden');
     });
 
-    // ពិនិត្យសិទ្ធិពេល Login (លុបការឆែក Verify Email ចោល)
-    onAuthStateChanged(auth, async (user) => {
+   onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists() && userDoc.data().role === "admin") {
-          alert("⚠️ គណនី Admin មិនអាចប្រើប្រាស់ទំព័រ User នេះបានទេ! កំពុងបញ្ជូនទៅកាន់ Admin Panel...");
-          window.location.href = "Admin.html";
-          return;
+        let isAdmin = false;
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists() && userDoc.data().role === "admin") {
+            isAdmin = true;
+          }
+        } catch (err) {
+          console.warn("User profile read fallback:", err.message);
         }
 
         authModal.classList.add('hidden');
+        authError.classList.add('hidden');
         userProfileBox.classList.remove('hidden');
-        userEmailDisplay.textContent = user.email;
+        userEmailDisplay.textContent = isAdmin ? `${user.email} (Admin)` : user.email;
+
+        if (isAdmin) {
+          goAdminPanelBtn.classList.remove('hidden');
+        } else {
+          goAdminPanelBtn.classList.add('hidden');
+        }
       } else {
         authModal.classList.remove('hidden');
         userProfileBox.classList.add('hidden');
+        goAdminPanelBtn.classList.add('hidden');
       }
     });
 
     document.getElementById('authForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
-      const pass = document.getElementById('authPass').value.trim();
+      const pass = document.getElementById('authPass').value;
       const username = authUsernameInput.value.trim();
+
+      authError.classList.add('hidden');
 
       if (!isValidEmail(email)) {
         authError.textContent = "❌ ទម្រង់ Email មិនត្រឹមត្រូវទេ! (ឧ. name@gmail.com)";
@@ -345,6 +356,12 @@
         return;
       }
 
+      if (isSignUpMode && !username) {
+        authError.textContent = "❌ សូមបំពេញឈ្មោះអ្នកប្រើប្រាស់ (Username)!";
+        authError.classList.remove('hidden');
+        return;
+      }
+
       authSubmitBtn.disabled = true;
       authSubmitBtn.textContent = "កំពុងដំណើរការ...";
 
@@ -353,23 +370,33 @@
           const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
           const user = userCredential.user;
 
-          await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            username: username,
-            email: user.email,
-            role: "user",
-            createdAt: new Date().toISOString()
-          });
+          try {
+            await setDoc(doc(db, "users", user.uid), {
+              uid: user.uid,
+              username: username,
+              email: user.email,
+              role: "user",
+              createdAt: new Date().toISOString()
+            });
+          } catch (profileErr) {
+            console.warn("Could not save user profile doc:", profileErr.message);
+          }
 
           showToast("បង្កើតគណនី និងចូលប្រើប្រាស់ជោគជ័យ!");
-          authError.classList.add('hidden');
         } else {
           await signInWithEmailAndPassword(auth, email, pass);
           showToast("Login ចូលប្រព័ន្ធជោគជ័យ!");
-          authError.classList.add('hidden');
         }
       } catch (err) {
-        authError.textContent = "❌ មានបញ្ហា៖ " + err.message;
+        let friendlyMsg = err.message;
+        if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+          friendlyMsg = "Email ឬ Password មិនត្រឹមត្រូវទេ!";
+        } else if (err.code === 'auth/email-already-in-use') {
+          friendlyMsg = "Email នេះមានគណនីរួចហើយ! សូមប្ដូរទៅ Sign In។";
+        } else if (err.code === 'auth/operation-not-allowed') {
+          friendlyMsg = "Email/Password Sign-in មិនទាន់បានបើកក្នុង Firebase Console ទេ!";
+        }
+        authError.textContent = "❌ " + friendlyMsg;
         authError.classList.remove('hidden');
       } finally {
         authSubmitBtn.disabled = false;
@@ -563,6 +590,7 @@
       const vopTax = roundUp100(vopBase * ((m.vop || 0) / 100));
       
       const totalTaxKhr = taxKhVal > 0 ? taxKhVal : (copTax + sopTax + vopTax);
+      const totalTaxWithCdl = totalTaxKhr + CDL_FEE;
 
       document.getElementById('cardHsCodeDisplay').textContent = `HS: ${m.hsCode}`;
       document.getElementById('cardKhName').textContent = m.khName;
@@ -596,10 +624,11 @@
       document.getElementById('cardSopAmount').textContent = `${sopTax.toLocaleString()} KHR`;
       document.getElementById('cardVopAmount').textContent = `${vopTax.toLocaleString()} KHR`;
       document.getElementById('cardTotalTax').textContent = `${totalTaxKhr.toLocaleString()} KHR`;
+      document.getElementById('cardTotalTaxWithCdl').textContent = `${totalTaxWithCdl.toLocaleString()} KHR`;
 
       receiptCard.classList.remove('hidden');
 
-      return { qtyNum, totalUsd, netTotal, grossTotal, plus20Usd, customsValueKhr, isOverLimit, copTax, sopTax, vopTax, totalTaxKhr, priceUnit, taxKhVal };
+      return { qtyNum, totalUsd, netTotal, grossTotal, plus20Usd, customsValueKhr, isOverLimit, copTax, sopTax, vopTax, totalTaxKhr, totalTaxWithCdl, priceUnit, taxKhVal };
     }
 
     document.getElementById('addItemForm').addEventListener('submit', function(e) {
@@ -607,7 +636,6 @@
       const editIdx = parseInt(document.getElementById('editItemIndex').value);
       const qtyNum = parseInt(qtyInput.value) || 0;
       const taxKhVal = parseFloat(taxKhInput.value) || 0;
-      const unitStr = document.getElementById('itemUnit').value.trim() || 'CTN';
 
       if (!selectedMasterItem) {
         showToast("សូមជ្រើសរើសមុខទំនិញជាមុនសិន!", true);
@@ -631,7 +659,6 @@
       const payload = {
         master: selectedMasterItem,
         qtyNum: finalQtyInt,
-        qtyStr: `${finalQtyInt} ${unitStr}`,
         customTaxKh: taxKhVal > 0 ? taxKhVal : null
       };
 
@@ -693,16 +720,13 @@
         grandTotalTaxKhr += totalTaxKhr;
         grandTotalKhWithCdl += totalKhWithCdl;
 
-        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
-        const displayQtyStr = `${qtyInt} ${unitLabel}`;
-
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition';
         tr.innerHTML = `
           <td class="p-3 border-r font-medium text-slate-500">${idx + 1}</td>
           <td class="p-3 border-r font-bold text-indigo-950 text-left">${m.khName}</td>
           <td class="p-3 border-r text-slate-600 text-left">${m.enName}</td>
-          <td class="p-3 border-r font-bold text-blue-700">${displayQtyStr}</td>
+          <td class="p-3 border-r font-bold text-blue-700">${qtyInt}</td>
           <td class="p-3 border-r">$ ${priceUnit.toFixed(2)}</td>
           <td class="p-3 border-r font-bold text-purple-700">$ ${totalUsd.toFixed(2)}</td>
           <td class="p-3 border-r font-semibold text-emerald-700">${netTotal.toFixed(2)} KG</td>
@@ -796,7 +820,6 @@
       declarationList.forEach((item, idx) => {
         const m = item.master;
         const qtyInt = Math.round(item.qtyNum);
-        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
         const priceUnit = m.priceKg * m.grossKg;
         const totalUsd = priceUnit * qtyInt;
         const plus20Usd = totalUsd * 1.20;
@@ -811,7 +834,7 @@
         totalKhAll += totalKh;
 
         rows.push([
-          idx + 1, m.khName, m.enName, `${qtyInt} ${unitLabel}`, priceUnit, totalUsd, m.netKg * qtyInt, m.grossKg * qtyInt,
+          idx + 1, m.khName, m.enName, qtyInt, priceUnit, totalUsd, m.netKg * qtyInt, m.grossKg * qtyInt,
           m.hsCode, customsValKhr, taxKhr, totalKh
         ]);
       });
@@ -825,30 +848,29 @@
       XLSX.writeFile(wb, `Tax_Declaration_${new Date().toISOString().slice(0,10)}.xlsx`);
     };
 
-    window.exportToPDF = function() {
+    // ================= EXPORT PDF ច្បាស់ល្អ ស្គាល់ FONT ខ្មែរ និងពេញទំព័រ A4 =================
+    window.exportToPDF = async function() {
       if (declarationList.length === 0) return showToast("ពុំមានទិន្នន័យសម្រាប់ Export ឡើយ!", true);
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('l', 'mm', 'a4');
+
+      window.scrollTo(0, 0);
+
       const exRate = parseFloat(exchangeRateInput.value) || 4083;
+      const todayStr = new Date().toLocaleDateString('en-GB');
 
-      doc.setFillColor(30, 58, 138);
-      doc.rect(0, 0, 297, 26, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.text("CUSTOMS TAX DECLARATION INVOICE", 14, 14);
-      doc.setFontSize(9);
-      doc.text(`Exchange Rate: ${exRate.toLocaleString()} KHR | Date: ${new Date().toLocaleDateString()}`, 14, 21);
+      let grandTotalUsd = 0;
+      let grandNetKg = 0;
+      let grandGrossKg = 0;
+      let grandTotalTaxKhr = 0;
+      let grandTotalKhWithCdl = 0;
 
-      const headers = [["No", "Khmer Item", "English Item", "Qty", "Price/Unit", "Total ($)", "Net", "Gross", "HS.Code", "Plus 20% (KHR)", "Tax (KHR)", "Total KH (KHR)"]];
-      
-      let grandTotalTax = 0;
-      const rows = declarationList.map((item, idx) => {
+      let tableRowsHtml = '';
+      declarationList.forEach((item, idx) => {
         const m = item.master;
         const qtyInt = Math.round(item.qtyNum);
-        const unitLabel = item.qtyStr.replace(/[0-9.]+\s*/, '') || 'CTN';
         const priceUnit = m.priceKg * m.grossKg;
         const totalUsd = priceUnit * qtyInt;
+        const netTotal = m.netKg * qtyInt;
+        const grossTotal = m.grossKg * qtyInt;
         const plus20Usd = totalUsd * 1.20;
         const customsValKhr = Math.round(plus20Usd * exRate);
         const cop = roundUp100(customsValKhr * (m.cop / 100));
@@ -858,31 +880,121 @@
         const taxKhr = item.customTaxKh ? item.customTaxKh : calculatedTaxKhr;
         const totalKh = taxKhr + CDL_FEE;
 
-        grandTotalTax += totalKh;
+        grandTotalUsd += totalUsd;
+        grandNetKg += netTotal;
+        grandGrossKg += grossTotal;
+        grandTotalTaxKhr += taxKhr;
+        grandTotalKhWithCdl += totalKh;
 
-        return [
-          idx + 1, m.khName, m.enName, `${qtyInt} ${unitLabel}`, "$" + priceUnit.toFixed(2), "$" + totalUsd.toFixed(2),
-          (m.netKg * qtyInt).toFixed(1) + " KG", (m.grossKg * qtyInt).toFixed(1) + " KG", m.hsCode,
-          customsValKhr.toLocaleString(),
-          taxKhr.toLocaleString(), totalKh.toLocaleString()
-        ];
+        tableRowsHtml += `
+          <tr style="page-break-inside: avoid;">
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center;">${idx + 1}</td>
+            <td style="padding: 5px 6px; border: 1px solid #cbd5e1; text-align: left; font-weight: 600; color: #1e1b4b;">${m.khName}</td>
+            <td style="padding: 5px 6px; border: 1px solid #cbd5e1; text-align: left;">${m.enName}</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: #1d4ed8;">${qtyInt}</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center;">$${priceUnit.toFixed(2)}</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">$${totalUsd.toFixed(2)}</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center;">${netTotal.toFixed(2)} KG</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center;">${grossTotal.toFixed(2)} KG</td>
+            <td style="padding: 5px 4px; border: 1px solid #cbd5e1; text-align: center; font-family: monospace;">${m.hsCode}</td>
+            <td style="padding: 5px 6px; border: 1px solid #cbd5e1; text-align: right;">៛ ${customsValKhr.toLocaleString()}</td>
+            <td style="padding: 5px 6px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #1e40af;">៛ ${taxKhr.toLocaleString()}</td>
+            <td style="padding: 5px 6px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; background-color: #fef3c7; color: #1e3a8a;">៛ ${totalKh.toLocaleString()}</td>
+          </tr>
+        `;
       });
 
-      doc.autoTable({
-        head: headers, body: rows, startY: 32, theme: 'grid',
-        headStyles: { fillColor: [30, 58, 138], halign: 'center', fontSize: 8 },
-        bodyStyles: { fontSize: 7.5, halign: 'center' },
-        columnStyles: { 11: { fillColor: [254, 243, 199], fontStyle: 'bold', textColor: [30, 58, 138] } }
-      });
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'fixed';
+      wrapper.style.top = '0';
+      wrapper.style.left = '0';
+      wrapper.style.width = '100vw';
+      wrapper.style.minHeight = '100vh';
+      wrapper.style.zIndex = '99999';
+      wrapper.style.backgroundColor = '#ffffff';
+      wrapper.style.overflow = 'auto';
 
-      const finalY = doc.lastAutoTable.finalY || 35;
-      doc.setFillColor(254, 243, 199);
-      doc.roundedRect(180, finalY + 5, 103, 12, 2, 2, 'F');
-      doc.setFontSize(10);
-      doc.setTextColor(30, 58, 138);
-      doc.text(`Total Tax KH: R ${grandTotalTax.toLocaleString()}`, 185, finalY + 13);
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.width = "1060px";
+      pdfContainer.style.margin = "0 auto";
+      pdfContainer.style.boxSizing = "border-box";
+      pdfContainer.style.fontFamily = "'Kantumruy Pro', sans-serif";
+      pdfContainer.style.padding = "10px";
+      pdfContainer.style.color = "#1e293b";
+      pdfContainer.style.backgroundColor = "#ffffff";
 
-      doc.save(`Customs_Tax_Invoice_${new Date().toISOString().slice(0,10)}.pdf`);
+      pdfContainer.innerHTML = `
+        <div style="background-color: #1e3a8a; color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="margin: 0; font-size: 17px; font-weight: 700;">វិក្កយបត្រគណនាប្រាក់ពន្ធគយ (CUSTOMS TAX DECLARATION INVOICE)</h2>
+            <p style="margin: 3px 0 0 0; font-size: 11.5px; color: #dbeafe;">កាលបរិច្ឆេទ (Date): ${todayStr}</p>
+          </div>
+          <div style="text-align: right; background: #172554; padding: 6px 12px; border-radius: 6px;">
+            <span style="font-size: 10.5px; color: #93c5fd;">អត្រាប្តូរប្រាក់ (Ex. Rate)</span><br>
+            <strong style="font-size: 13px; color: #fde047;">1 USD = ${exRate.toLocaleString()} ៛</strong>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+          <thead>
+            <tr style="background-color: #1e3a8a; color: white;">
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 3.5%;">ល.រ</th>
+              <th style="padding: 7px 6px; border: 1px solid #1e3a8a; width: 14%;">មុខទំនិញជា ខ្មែរ</th>
+              <th style="padding: 7px 6px; border: 1px solid #1e3a8a; width: 14%;">មុខទំនិញជា អង់គ្លេស</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 5%;">ចំនួន</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 7%;">តម្លៃឯកតា</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 7%;">Total ($)</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 7%;">Net</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 7%;">Gross</th>
+              <th style="padding: 7px 4px; border: 1px solid #1e3a8a; width: 8%;">HS.Code</th>
+              <th style="padding: 7px 6px; border: 1px solid #1e3a8a; width: 9%;">តម្លៃបូក 20% (៛)</th>
+              <th style="padding: 7px 6px; border: 1px solid #1e3a8a; width: 9%;">ប្រាក់ពន្ធ (៛)</th>
+              <th style="padding: 7px 6px; border: 1px solid #1e3a8a; width: 9.5%;">សរុប (រួម CDL)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #e2e8f0; font-weight: bold; font-size: 11px; page-break-inside: avoid;">
+              <td colspan="5" style="padding: 8px 6px; border: 1px solid #cbd5e1; text-align: right;">សរុបរួម (Grand Total):</td>
+              <td style="padding: 8px 4px; border: 1px solid #cbd5e1; text-align: center; color: #581c87;">$${grandTotalUsd.toFixed(2)}</td>
+              <td style="padding: 8px 4px; border: 1px solid #cbd5e1; text-align: center; color: #065f46;">${grandNetKg.toFixed(2)} KG</td>
+              <td style="padding: 8px 4px; border: 1px solid #cbd5e1; text-align: center; color: #92400e;">${grandGrossKg.toFixed(2)} KG</td>
+              <td colspan="2" style="padding: 8px 4px; border: 1px solid #cbd5e1;"></td>
+              <td style="padding: 8px 6px; border: 1px solid #cbd5e1; text-align: right; color: #1e40af;">៛ ${grandTotalTaxKhr.toLocaleString()}</td>
+              <td style="padding: 8px 6px; border: 1px solid #cbd5e1; text-align: right; background-color: #fde68a; color: #1e3a8a; font-size: 11.5px;">៛ ${grandTotalKhWithCdl.toLocaleString()}</td>
+            </tr>
+          </tfoot>
+        </table>
+      `;
+
+      wrapper.appendChild(pdfContainer);
+      document.body.appendChild(wrapper);
+
+      showToast("កំពុងទាញយកឯកសារ PDF...");
+
+      try {
+        await document.fonts.ready;
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        const opt = {
+          margin:       [5, 5, 5, 5],
+          filename:     `Customs_Tax_Invoice_${new Date().toISOString().slice(0,10)}.pdf`,
+          image:        { type: 'jpeg', quality: 1.0 },
+          html2canvas:  { scale: 3, useCORS: true, scrollY: 0, logging: false, letterRendering: true },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        await html2pdf().set(opt).from(pdfContainer).save();
+      } catch (err) {
+        console.error(err);
+        showToast("មានបញ្ហាក្នុងការបង្កើត PDF!", true);
+      } finally {
+        if (wrapper.parentNode) {
+          wrapper.parentNode.removeChild(wrapper);
+        }
+      }
     };
     
   </script>
