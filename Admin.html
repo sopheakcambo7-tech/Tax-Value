@@ -11,12 +11,12 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-6 text-slate-800 flex flex-col items-center">
 
-  <!-- ================= 1. LOGIN SECTION (បង្ហាញដំបូងបង្អស់) ================= -->
+  <!-- ================= 1. LOGIN SECTION ================= -->
   <div id="loginSection" class="w-full max-w-md mt-16 bg-white p-8 rounded-2xl shadow-lg border border-slate-200 space-y-6">
     <div class="text-center space-y-2">
       <div class="text-4xl">🔐</div>
       <h2 class="text-xl font-bold text-blue-950">Admin Authentication</h2>
-      <p class="text-xs text-slate-500">សូមបញ្ចូលគណនីសម្ងាត់ដើម្បីចូលកាន់ប្រព័ន្ធ Admin</p>
+      <p class="text-xs text-slate-500">សូមបញ្ចូលគណនី Admin ដើម្បីចូលប្រើប្រាស់ប្រព័ន្ធ</p>
     </div>
 
     <div id="loginError" class="hidden p-3 bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl text-center"></div>
@@ -32,17 +32,17 @@
         <input type="password" id="adminPass" placeholder="••••••••" required 
                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-600">
       </div>
-      <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
-        Login ចូលប្រព័ន្ធ Cloud
+      <button type="submit" id="adminLoginBtn" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-md">
+        Login ចូលប្រព័ន្ធ
       </button>
     </form>
     <div class="text-center">
-      <a href="index.html" class="text-xs text-blue-600 hover:underline">← ត្រឡប់ទៅទំព័រគណនាពន្ធ (User Page)</a>
+      <a href="index.html" class="text-xs text-blue-600 hover:underline">← ទៅកាន់ទំព័រគណនាពន្ធ (Tax Calculator)</a>
     </div>
   </div>
 
 
-  <!-- ================= 2. ADMIN DASHBOARD (លាក់រហូតទាល់តែ Login ត្រូវ) ================= -->
+  <!-- ================= 2. ADMIN DASHBOARD ================= -->
   <div id="adminDashboard" class="hidden max-w-7xl w-full mx-auto space-y-6">
     
     <!-- Top Header -->
@@ -54,8 +54,9 @@
         <p class="text-xs text-slate-500 mt-1">Realtime Cloud Sync System for Customs Valuation</p>
       </div>
       
-      <div class="flex items-center gap-3">
-        <a href="index.html" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition">
+      <div class="flex flex-wrap items-center gap-2">
+        <span id="adminEmailBadge" class="text-xs font-bold text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl"></span>
+        <a href="index.html" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition">
           🧮 ទៅកាន់ទំព័រគណនាពន្ធ
         </a>
         <button onclick="adminLogout()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition">
@@ -135,7 +136,7 @@
   <!-- ================= JAVASCRIPT AUTH & FIREBASE SYNC ================= -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -147,46 +148,67 @@
       appId: "1:1039410575503:web:847adb8b120553a1c618fa"
     };
 
-    let app, db;
-    try {
-      app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
-    } catch(e) {
-      console.warn("Firebase config fallback");
-    }
-
-    let masterList = [];
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // ពិនិត្យស្ថានភាព Login ស្វ័យប្រវត្តិ
-    onAuthStateChanged(auth, (user) => {
+    let masterList = [];
+    let isAuthorizedAdmin = false;
+
+    onAuthStateChanged(auth, async (user) => {
+      const loginError = document.getElementById('loginError');
       if (user) {
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('adminDashboard').classList.remove('hidden');
-        fetchMasterDataRealtime();
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const role = userDoc.exists() ? userDoc.data().role : null;
+
+          if (role === "admin") {
+            isAuthorizedAdmin = true;
+            loginError.classList.add('hidden');
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.remove('hidden');
+            document.getElementById('adminEmailBadge').textContent = `${user.email} (Admin)`;
+            fetchMasterDataRealtime();
+          } else {
+            isAuthorizedAdmin = false;
+            await signOut(auth);
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            loginError.textContent = '⚠️ គណនីនេះមិនមែនជា Admin ទេ! សូមប្រើប្រាស់ទំព័រគណនាពន្ធ ។';
+            loginError.classList.remove('hidden');
+          }
+        } catch (err) {
+          console.error("Role check error:", err);
+        }
       } else {
+        isAuthorizedAdmin = false;
         document.getElementById('adminDashboard').classList.add('hidden');
         document.getElementById('loginSection').classList.remove('hidden');
       }
     });
 
-    // មុខងារចុច Login ផ្ទៀងផ្ទាត់ជាមួយ Cloud
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const email = document.getElementById('adminEmail').value.trim();
       const pass = document.getElementById('adminPass').value.trim();
       const loginError = document.getElementById('loginError');
+      const loginBtn = document.getElementById('adminLoginBtn');
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "កំពុងផ្ទៀងផ្ទាត់...";
+      loginError.classList.add('hidden');
 
       try {
         await signInWithEmailAndPassword(auth, email, pass);
-        loginError.classList.add('hidden');
       } catch (error) {
         loginError.textContent = '❌ Email ឬ Password មិនត្រឹមត្រូវទេ!';
         loginError.classList.remove('hidden');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login ចូលប្រព័ន្ធ";
       }
     });
 
-    // មុខងារ Log Out
     window.adminLogout = async function() {
       await signOut(auth);
     };
@@ -200,9 +222,8 @@
       setTimeout(() => { toast.classList.add('hidden'); }, 4000);
     }
 
-    // --- REALTIME MASTER DATA SYNC ---
     function fetchMasterDataRealtime() {
-      if (!db) return;
+      if (!isAuthorizedAdmin) return;
       onSnapshot(collection(db, "masterItems"), (snapshot) => {
         masterList = [];
         snapshot.forEach((docSnap) => {
@@ -253,9 +274,10 @@
       });
     }
 
-    // --- ADD / EDIT MASTER ITEM ---
     document.getElementById('masterForm').addEventListener('submit', async function(e) {
       e.preventDefault();
+      if (!isAuthorizedAdmin) return showToast("គ្មានសិទ្ធិធ្វើប្រតិបត្តិការ!", true);
+
       const docId = document.getElementById('masterDocId').value;
       const data = {
         khName: document.getElementById('khName').value.trim(),
@@ -270,16 +292,14 @@
       };
 
       try {
-        if (db) {
-          if (docId) {
-            await updateDoc(doc(db, "masterItems", docId), data);
-            showToast("បានកែប្រែទិន្នន័យលើ Cloud ជោគជ័យ!");
-          } else {
-            await addDoc(collection(db, "masterItems"), data);
-            showToast("បានបន្ថែមទំនិញថ្មីទៅ Cloud ជោគជ័យ!");
-          }
-          resetMasterForm();
+        if (docId) {
+          await updateDoc(doc(db, "masterItems", docId), data);
+          showToast("បានកែប្រែទិន្នន័យលើ Cloud ជោគជ័យ!");
+        } else {
+          await addDoc(collection(db, "masterItems"), data);
+          showToast("បានបន្ថែមទំនិញថ្មីទៅ Cloud ជោគជ័យ!");
         }
+        resetMasterForm();
       } catch (err) {
         showToast("មានបញ្ហាក្នុងការរក្សាទុក៖ " + err.message, true);
       }
@@ -303,12 +323,11 @@
     };
 
     window.deleteMasterItem = async function(id) {
+      if (!isAuthorizedAdmin) return;
       if (!confirm("តើអ្នកពិតជាចង់លុបទំនិញនេះមែនទេ?")) return;
       try {
-        if (db) {
-          await deleteDoc(doc(db, "masterItems", id));
-          showToast("បានលុបទំនិញជោគជ័យ!");
-        }
+        await deleteDoc(doc(db, "masterItems", id));
+        showToast("បានលុបទំនិញជោគជ័យ!");
       } catch (err) {
         showToast("លុបមិនបានសម្រេច!", true);
       }
@@ -323,7 +342,6 @@
     document.getElementById('resetMasterBtn').addEventListener('click', resetMasterForm);
     document.getElementById('searchMasterInput').addEventListener('input', renderMasterTable);
 
-    // --- EXPORT & UPLOAD EXCEL ---
     document.getElementById('exportExcelBtn').addEventListener('click', function() {
       if (masterList.length === 0) return showToast("ពុំមានទិន្នន័យឡើយ!", true);
       const data = masterList.map((item, idx) => ({
@@ -338,6 +356,7 @@
     });
 
     document.getElementById('excelFileInput').addEventListener('change', function(e) {
+      if (!isAuthorizedAdmin) return showToast("គ្មានសិទ្ធិ Upload!", true);
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -367,7 +386,7 @@
               count++;
             }
           }
-          showToast(`បាន Upload ចូល Cloud สำเร็จចំនួន ${count} មុខទំនិញ!`);
+          showToast(`បាន Upload ចូល Cloud សម្រេចចំនួន ${count} មុខទំនិញ!`);
         } catch (err) {
           showToast("មានបញ្ហាក្នុងការអាន File Excel!", true);
         }
