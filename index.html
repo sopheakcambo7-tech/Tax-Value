@@ -17,7 +17,7 @@
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800 flex flex-col items-center">
 
   <!-- ================= AUTH MODAL (SIGN IN / SIGN UP) ================= -->
-  <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+  <div id="authModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 space-y-6">
       
       <div class="text-center space-y-1">
@@ -306,8 +306,15 @@
       authError.classList.add('hidden');
     });
 
-   onAuthStateChanged(auth, async (user) => {
+   let authInitialized = false;
+
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
+        authInitialized = true;
+        authModal.classList.add('hidden');
+        userProfileBox.classList.remove('hidden');
+        userEmailDisplay.textContent = user.email;
+
         let isAdmin = false;
         try {
           const userDocRef = doc(db, "users", user.uid);
@@ -319,23 +326,20 @@
           console.warn("User profile read fallback:", err.message);
         }
 
-        authModal.classList.add('hidden');
-        authError.classList.add('hidden');
-        userProfileBox.classList.remove('hidden');
         userEmailDisplay.textContent = isAdmin ? `${user.email} (Admin)` : user.email;
-
         if (isAdmin) {
           goAdminPanelBtn.classList.remove('hidden');
         } else {
           goAdminPanelBtn.classList.add('hidden');
         }
       } else {
-        authModal.classList.remove('hidden');
+        authInitialized = true;
         userProfileBox.classList.add('hidden');
         goAdminPanelBtn.classList.add('hidden');
+        authModal.classList.remove('hidden');
       }
     });
-
+    
     document.getElementById('authForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const email = document.getElementById('authEmail').value.trim();
